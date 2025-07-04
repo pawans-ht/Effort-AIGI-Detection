@@ -263,6 +263,12 @@ def main():
             f"(0=Real, 1=Fake) | Fake Prob: {prob:.4f}"
         )
 
+        # Get Fake or Real classification
+        if prob >= 0.5:
+            print("Fake")
+        else:
+            print("Real")
+
 
 if __name__ == "__main__":
     main()
