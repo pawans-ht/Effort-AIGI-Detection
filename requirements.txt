@@ -1,0 +1,49 @@
+# Requirements extracted from install.sh
+# Core scientific computing packages
+numpy<=2.0
+pandas
+scipy
+
+# Image processing and computer vision
+Pillow
+opencv-python
+scikit-image
+imageio
+imgaug
+imutils
+albumentations
+kornia
+
+# Machine learning and deep learning
+scikit-learn
+torch
+torchvision
+torchaudio
+efficientnet-pytorch
+timm
+segmentation-models-pytorch
+torchtoolbox
+transformers
+loralib
+einops
+
+# Face detection and tracking
+dlib
+filterpy
+
+# Visualization and monitoring
+seaborn
+tensorboard
+
+# Utilities
+tqdm
+pyyaml
+simplejson
+setuptools
+fvcore
+
+# Git repositories
+git+https://github.com/openai/CLIP.git
+
+# Note: PyTorch packages (torch, torchvision, torchaudio) require the following extra index URL:
+# --extra-index-url https://download.pytorch.org/whl/cu113
