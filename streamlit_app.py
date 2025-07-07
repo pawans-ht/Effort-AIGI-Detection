@@ -12,6 +12,14 @@ This application provides a beautiful interface for:
 import streamlit as st
 import pandas as pd
 
+# Configure Streamlit for better file upload handling
+st.set_page_config(
+    page_title="Deepfake Detection Analysis",
+    page_icon="🎭",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -28,13 +36,7 @@ from typing import Tuple
 import cv2
 from PIL import Image
 
-# Page configuration
-st.set_page_config(
-    page_title="Deepfake Detection Studio",
-    page_icon="🎭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page configuration moved to top of file
 
 # Custom CSS for better styling
 st.markdown("""
@@ -56,6 +58,45 @@ st.markdown("""
         color: white;
         text-align: center;
         margin: 0.5rem 0;
+        height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-sizing: border-box;
+    }
+
+    .metric-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .metric-card h2 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.8rem;
+        font-weight: bold;
+    }
+
+    .metric-card p {
+        margin: 0;
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+    /* Metrics container for proper alignment */
+    .metrics-container {
+        margin: 1rem 0;
+    }
+
+    /* Ensure consistent column alignment */
+    .stColumn {
+        display: flex;
+        align-items: stretch;
+    }
+
+    .stColumn > div {
+        width: 100%;
     }
     
     .status-real {
@@ -327,30 +368,249 @@ def show_home_page():
 def show_single_video_analysis(analyzer):
     """Display single video analysis interface"""
     st.header("📹 Single Video Analysis")
-    
-    # File upload
-    uploaded_file = st.file_uploader(
-        "Choose a video file",
-        type=['mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'],
-        help="Upload a video file to analyze for deepfake content"
-    )
-    
+
+    # Initialize session state for upload error tracking
+    if 'upload_errors' not in st.session_state:
+        st.session_state.upload_errors = 0
+    if 'last_upload_error' not in st.session_state:
+        st.session_state.last_upload_error = None
+
+    # Add file size warning
+    st.info("📁 **File Upload Tips:**\n"
+            "- Maximum file size: 500MB (configured in .streamlit/config.toml)\n"
+            "- Supported formats: MP4, AVI, MOV, MKV, FLV, WMV, WebM\n"
+            "- For larger files, use the file path option below\n"
+            "- If you get upload errors, try using the file path option instead")
+
+    # File upload with enhanced error handling
+    uploaded_file = None
+    upload_error = None
+
+    try:
+        uploaded_file = st.file_uploader(
+            "Choose a video file",
+            type=['mp4', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'webm'],
+            help="Upload a video file to analyze for deepfake content",
+            key="video_uploader",
+            accept_multiple_files=False
+        )
+    except Exception as e:
+        upload_error = str(e)
+        st.session_state.upload_errors += 1
+        st.session_state.last_upload_error = upload_error
+
+        st.error(f"❌ File upload widget error: {upload_error}")
+        st.error("**This is likely due to:**")
+        st.error("- File size exceeding 500MB limit")
+        st.error("- Network connectivity problems")
+        st.error("- Browser compatibility issues")
+        st.error("- Streamlit server configuration")
+        st.error("**Solution:** Use the file path option below instead.")
+        uploaded_file = None
+
+    # Show upload status and recovery suggestions
     if uploaded_file is not None:
-        # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp_file:
-            tmp_file.write(uploaded_file.read())
-            temp_video_path = tmp_file.name
+        st.success(f"📁 File selected: {uploaded_file.name}")
+        # Reset error counter on successful upload
+        st.session_state.upload_errors = 0
+    elif upload_error:
+        st.warning("⚠️ Upload widget failed - use file path option below")
+
+        # Show additional help for repeated errors
+        if st.session_state.upload_errors > 1:
+            st.error("🔄 **Repeated upload errors detected!**")
+            with st.expander("🆘 Advanced Troubleshooting", expanded=True):
+                st.markdown("""
+                **Try these solutions in order:**
+
+                1. **Refresh the page** (Ctrl+F5 or Cmd+Shift+R)
+                2. **Clear browser cache and cookies**
+                3. **Try a different browser** (Chrome, Firefox, Safari)
+                4. **Check browser console** (F12 → Console tab) for detailed errors
+                5. **Restart Streamlit server** and try again
+                6. **Use file path option** instead of upload (most reliable)
+
+                **If errors persist:**
+                - Check your internet connection stability
+                - Try uploading a smaller test video first
+                - Contact support with browser console error details
+                """)
+
+                if st.button("🔄 Reset Error Counter", key="reset_errors"):
+                    st.session_state.upload_errors = 0
+                    st.session_state.last_upload_error = None
+                    st.rerun()
+
+    # Alternative: Direct file path input
+    st.markdown("**Or enter video file path directly:**")
+    video_path_input = st.text_input(
+        "Video file path",
+        placeholder="/path/to/your/video.mp4",
+        help="Enter the full path to your video file"
+    )
+
+    # Troubleshooting section
+    with st.expander("🔧 Troubleshooting Upload Issues"):
+        st.markdown("""
+        **Common solutions for upload errors:**
+
+        1. **AxiosError 400**: Usually indicates file size or format issues
+           - Try a smaller video file (< 500MB)
+           - Use the file path option instead of upload
+           - Check that the file format is supported
+
+        2. **Network timeout**: For large files
+           - Use the file path option for files > 100MB
+           - Ensure stable internet connection
+
+        3. **File format issues**:
+           - Supported: MP4, AVI, MOV, MKV, FLV, WMV, WebM
+           - Convert unsupported formats using FFmpeg
+
+        4. **Browser issues**:
+           - Try refreshing the page
+           - Clear browser cache
+           - Try a different browser
+        """)
+
+    temp_video_path = None
+    video_name = None
+
+    if uploaded_file is not None:
+        try:
+            # Debug info
+            st.info(f"📁 Processing file: {uploaded_file.name}")
+
+            # Check if file has content
+            if not hasattr(uploaded_file, 'getvalue'):
+                st.error("❌ Invalid file object. Please try uploading again.")
+                st.error("**Troubleshooting:** Try refreshing the page and uploading again, or use the file path option.")
+                return
+
+            # Get file content safely
+            try:
+                file_content = uploaded_file.getvalue()
+                file_size = len(file_content)
+
+                # Additional validation
+                if file_content is None:
+                    st.error("❌ File content is empty. Please check the file and try again.")
+                    return
+
+            except Exception as e:
+                st.error(f"❌ Failed to read file content: {str(e)}")
+                st.error("**This might be due to:**")
+                st.error("- Network timeout during upload")
+                st.error("- File corruption during transfer")
+                st.error("- Browser memory limitations")
+                st.error("**Solution:** Try uploading again or use the file path option.")
+                return
+
+            # Check file size (configured limit is 500MB)
+            if file_size == 0:
+                st.error("❌ File appears to be empty. Please check the file and try again.")
+                return
+
+            if file_size > 500 * 1024 * 1024:  # 500MB
+                st.error("❌ File too large! Please use a file smaller than 500MB or use the file path option.")
+                return
+
+            st.success(f"✅ File uploaded successfully: {uploaded_file.name} ({file_size / (1024*1024):.1f} MB)")
+
+            # Save uploaded file temporarily with better error handling
+            try:
+                file_extension = uploaded_file.name.split('.')[-1].lower()
+
+                # Create temporary file with proper permissions
+                with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}", mode='wb') as tmp_file:
+                    tmp_file.write(file_content)
+                    tmp_file.flush()  # Ensure data is written
+                    os.fsync(tmp_file.fileno())  # Force write to disk
+                    temp_video_path = tmp_file.name
+                    video_name = uploaded_file.name
+
+                # Verify the file was written correctly
+                if not os.path.exists(temp_video_path):
+                    st.error("❌ Failed to save temporary file. Please try again.")
+                    st.error("**This might be due to:**")
+                    st.error("- Insufficient disk space")
+                    st.error("- Permission issues")
+                    st.error("- System temporary directory issues")
+                    return
+
+                actual_size = os.path.getsize(temp_video_path)
+                if actual_size != file_size:
+                    st.error(f"❌ File size mismatch. Expected {file_size}, got {actual_size}. Please try again.")
+                    st.error("**This indicates a file transfer error. Try uploading again or use the file path option.**")
+                    # Clean up the corrupted file
+                    try:
+                        os.unlink(temp_video_path)
+                    except OSError:
+                        pass
+                    return
+
+                st.success(f"✅ File saved temporarily: {os.path.basename(temp_video_path)}")
+
+            except PermissionError as e:
+                st.error(f"❌ Permission error saving file: {str(e)}")
+                st.error("**Solution:** Try using the file path option instead.")
+                return
+            except OSError as e:
+                st.error(f"❌ System error saving file: {str(e)}")
+                st.error("**This might be due to:**")
+                st.error("- Insufficient disk space")
+                st.error("- System temporary directory issues")
+                st.error("**Solution:** Try using the file path option instead.")
+                return
+            except Exception as e:
+                st.error(f"❌ Failed to save temporary file: {str(e)}")
+                st.error("**Solution:** Try using the file path option instead.")
+                return
+
+        except Exception as e:
+            st.error(f"❌ Error processing uploaded file: {str(e)}")
+            st.error("**Troubleshooting tips:**")
+            st.error("- Try refreshing the page and uploading again")
+            st.error("- Use the file path option instead")
+            st.error("- Check your internet connection")
+            st.error("- Try a different browser")
+            return
+
+    elif video_path_input.strip():
+        # Use direct file path
+        if os.path.exists(video_path_input.strip()):
+            temp_video_path = video_path_input.strip()
+            video_name = os.path.basename(temp_video_path)
+        else:
+            st.error("❌ File not found. Please check the path and try again.")
+            return
+
+    if temp_video_path is not None:
         
         # Display video info
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            st.video(uploaded_file)
+            # Display video preview
+            if uploaded_file is not None:
+                st.video(uploaded_file)
+            else:
+                # For direct file path, show the video file
+                try:
+                    st.video(temp_video_path)
+                except Exception as e:
+                    st.error(f"Cannot display video preview: {str(e)}")
+                    st.info("Video file loaded successfully but preview unavailable.")
         
         with col2:
             st.markdown("### 📋 Video Information")
-            st.write(f"**Filename:** {uploaded_file.name}")
-            st.write(f"**Size:** {uploaded_file.size / (1024*1024):.1f} MB")
+            st.write(f"**Filename:** {video_name}")
+            # Get file size from the actual file
+            try:
+                file_size = os.path.getsize(temp_video_path) / (1024*1024)
+                st.write(f"**Size:** {file_size:.1f} MB")
+            except Exception:
+                st.write("**Size:** Unknown")
             
             # Get video properties
             try:
@@ -366,11 +626,11 @@ def show_single_video_analysis(analyzer):
                 st.write(f"**Resolution:** {width}x{height}")
                 st.write(f"**FPS:** {fps:.1f}")
                 st.write(f"**Estimated frames to analyze:** {int(duration)}")  # 1 FPS extraction
-            except:
+            except Exception:
                 st.write("Could not read video properties")
         
         # Analysis button
-        if st.button("🚀 Run Deepfake Analysis", type="primary", use_container_width=True):
+        if st.button("🚀 Run Deepfake Analysis", type="primary", use_container_width=True, key="run_single_analysis"):
             with st.spinner("Running deepfake analysis... This may take several minutes."):
                 # Run inference
                 success, output_dir = analyzer.run_inference(temp_video_path)
@@ -388,12 +648,12 @@ def show_single_video_analysis(analyzer):
                             # Store results in session state for persistence
                             st.session_state['current_analysis'] = {
                                 'df': df,
-                                'video_name': uploaded_file.name,
+                                'video_name': video_name,
                                 'csv_path': csv_path
                             }
-                            
+
                             # Display results
-                            display_video_results(analyzer, df, uploaded_file.name)
+                            display_video_results(analyzer, df, video_name or "Unknown", "_current")
                         else:
                             st.error("Failed to load analysis results")
                     else:
@@ -401,20 +661,22 @@ def show_single_video_analysis(analyzer):
                 else:
                     st.error("Analysis failed")
         
-        # Clean up temporary file
-        try:
-            os.unlink(temp_video_path)
-        except OSError:
-            pass
+        # Clean up temporary file (only if it was uploaded, not direct path)
+        if uploaded_file is not None:
+            try:
+                if os.path.exists(temp_video_path):
+                    os.unlink(temp_video_path)
+            except OSError:
+                pass
     
     # Display previous results if available
     if 'current_analysis' in st.session_state:
         st.markdown("---")
         st.header("📊 Previous Analysis Results")
         analysis = st.session_state['current_analysis']
-        display_video_results(analyzer, analysis['df'], analysis['video_name'])
+        display_video_results(analyzer, analysis['df'], analysis['video_name'], "_previous")
 
-def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
+def display_video_results(analyzer, df: pd.DataFrame, video_name: str, key_suffix: str = ""):
     """Display comprehensive analysis results for a video"""
     # Calculate metrics
     metrics = analyzer.calculate_metrics(df)
@@ -422,9 +684,10 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
     # Header with video name
     st.markdown(f"## 📊 Analysis Results: {video_name}")
     
-    # Key metrics cards
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
+    # Key metrics cards with equal spacing
+    st.markdown('<div class="metrics-container">', unsafe_allow_html=True)
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+
     with col1:
         health_color = "🟢" if metrics['health_score'] > 70 else "🟡" if metrics['health_score'] > 30 else "🔴"
         st.markdown(f"""
@@ -472,6 +735,8 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
         </div>
         """, unsafe_allow_html=True)
 
+    st.markdown('</div>', unsafe_allow_html=True)  # Close metrics-container
+
     # Detailed breakdown
     st.markdown("### 📈 Detailed Breakdown")
 
@@ -502,7 +767,7 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
             height=400,
             showlegend=True
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, use_container_width=True, key=f"classification_pie_chart{key_suffix}")
 
     with col2:
         # Confidence distribution histogram (exclude no face and failed frames)
@@ -519,7 +784,7 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
             fig_hist.add_vline(x=0.5, line_dash="dash", line_color="red",
                               annotation_text="Decision Threshold")
             fig_hist.update_layout(height=400)
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, use_container_width=True, key=f"confidence_histogram{key_suffix}")
         else:
             st.info("No frames with detected faces for confidence analysis")
 
@@ -584,7 +849,7 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
     fig_timeline.update_yaxes(title_text="Confidence Score", row=1, col=1)
     fig_timeline.update_yaxes(title_text="Classification", row=2, col=1)
 
-    st.plotly_chart(fig_timeline, use_container_width=True)
+    st.plotly_chart(fig_timeline, use_container_width=True, key=f"timeline_chart{key_suffix}")
 
     # Fake segments analysis
     if metrics['fake_segments']:
@@ -602,7 +867,7 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
             })
 
         segments_df = pd.DataFrame(segments_data)
-        st.dataframe(segments_df, use_container_width=True)
+        st.dataframe(segments_df, use_container_width=True, key=f"fake_segments_dataframe{key_suffix}")
 
         # Segments visualization
         fig_segments = px.timeline(
@@ -614,7 +879,7 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
             color_discrete_sequence=['#ff4b2b']
         )
         fig_segments.update_layout(height=300)
-        st.plotly_chart(fig_segments, use_container_width=True)
+        st.plotly_chart(fig_segments, use_container_width=True, key=f"fake_segments_chart{key_suffix}")
 
     # Statistical summary
     st.markdown("### 📊 Statistical Summary")
@@ -692,8 +957,8 @@ def display_video_results(analyzer, df: pd.DataFrame, video_name: str):
 
     with col3:
         # View raw data
-        if st.button("👁️ View Raw Data"):
-            st.dataframe(df, use_container_width=True)
+        if st.button("👁️ View Raw Data", key=f"view_raw_data_single{key_suffix}"):
+            st.dataframe(df, use_container_width=True, key=f"raw_data_dataframe{key_suffix}")
 
 def show_batch_analysis(analyzer):
     """Display batch analysis interface"""
@@ -727,7 +992,7 @@ def show_batch_analysis(analyzer):
                         file_size = os.path.getsize(file_path) / (1024*1024)
                         st.write(f"{i+1}. {file_name} ({file_size:.1f} MB)")
 
-                if st.button("🚀 Run Batch Analysis", type="primary"):
+                if st.button("🚀 Run Batch Analysis", type="primary", key="run_batch_analysis"):
                     batch_results = []
 
                     progress_bar = st.progress(0)
@@ -785,7 +1050,7 @@ def display_batch_results(batch_results: list[dict]):
         })
 
     summary_df = pd.DataFrame(summary_data)
-    st.dataframe(summary_df, use_container_width=True)
+    st.dataframe(summary_df, use_container_width=True, key="batch_summary_dataframe")
 
     # Comparative visualizations
     st.markdown("### 📈 Comparative Analysis")
@@ -806,7 +1071,7 @@ def display_batch_results(batch_results: list[dict]):
         )
         fig_health.update_layout(height=400)
         fig_health.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_health, use_container_width=True)
+        st.plotly_chart(fig_health, use_container_width=True, key="batch_health_scores")
 
     with col2:
         # Face detection rates
@@ -820,7 +1085,7 @@ def display_batch_results(batch_results: list[dict]):
         )
         fig_face.update_layout(height=400)
         fig_face.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_face, use_container_width=True)
+        st.plotly_chart(fig_face, use_container_width=True, key="batch_face_detection")
 
 def show_compare_videos(analyzer):
     """Display video comparison interface"""
@@ -938,7 +1203,7 @@ def display_advanced_insights(combined_df: pd.DataFrame):
         )
         fig_violin.update_layout(height=500)
         fig_violin.update_xaxes(tickangle=45)
-        st.plotly_chart(fig_violin, use_container_width=True)
+        st.plotly_chart(fig_violin, use_container_width=True, key="advanced_confidence_violin")
 
 if __name__ == "__main__":
     main()

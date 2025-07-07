@@ -1,0 +1,30 @@
+[server]
+# Increase file upload size limit to 500MB
+maxUploadSize = 500
+
+# Enable CORS for better file handling
+enableCORS = true
+
+# Increase message size limit
+maxMessageSize = 500
+
+# Increase timeout for large uploads
+fileWatcherType = "none"
+
+# Disable usage stats to reduce network overhead
+headless = true
+
+# Additional settings for better upload handling
+runOnSave = false
+allowRunOnSave = false
+
+[browser]
+# Disable usage stats collection
+gatherUsageStats = false
+
+[theme]
+# Optional: Set a custom theme
+primaryColor = "#FF6B6B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"

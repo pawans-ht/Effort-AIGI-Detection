@@ -46,7 +46,7 @@ from skimage import transform as trans
 
 # Configuration
 WEIGHTS_PATH = "/Users/uddeshyaagrawal/Documents/Notes/DeepFaceDetection/Effort-AIGI-Detection/effort_clip_L14_trainOn_FaceForensic.pth"
-LANDMARK_MODEL = "/Users/uddeshyaagrawal/Documents/Notes/DeepFaceDetection/Effort-AIGI-Detection/DeepfakeBench/preprocessing/shape_predictor_81_face_landmarks.dat"
+LANDMARK_MODEL = "DeepfakeBench/preprocessing/shape_predictor_81_face_landmarks.dat"
 DETECTOR_CONFIG = "DeepfakeBench/training/config/detector/effort.yaml"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
