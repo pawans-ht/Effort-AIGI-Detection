@@ -11,6 +11,7 @@ This application provides a beautiful interface for:
 
 import streamlit as st
 import pandas as pd
+import time
 
 # Configure Streamlit for better file upload handling
 st.set_page_config(
@@ -410,9 +411,19 @@ def show_single_video_analysis(analyzer):
 
     # Show upload status and recovery suggestions
     if uploaded_file is not None:
-        st.success(f"📁 File selected: {uploaded_file.name}")
-        # Reset error counter on successful upload
-        st.session_state.upload_errors = 0
+        # Log file size for debugging
+        file_size_mb = uploaded_file.size / (1024 * 1024)
+        st.info(f"ℹ️ Uploaded file size: {file_size_mb:.2f} MB")
+
+        # Check against the 500MB limit
+        if file_size_mb > 500:
+            st.error("❌ **File size exceeds 500MB limit!**")
+            st.error("Please upload a smaller file or use the file path option below.")
+            uploaded_file = None  # Prevent further processing
+        else:
+            st.success(f"📁 File selected: {uploaded_file.name}")
+            # Reset error counter on successful upload
+            st.session_state.upload_errors = 0
     elif upload_error:
         st.warning("⚠️ Upload widget failed - use file path option below")
 
@@ -632,6 +643,17 @@ def show_single_video_analysis(analyzer):
         # Analysis button
         if st.button("🚀 Run Deepfake Analysis", type="primary", use_container_width=True, key="run_single_analysis"):
             with st.spinner("Running deepfake analysis... This may take several minutes."):
+                # Wait and verify file is ready
+                time.sleep(0.5) # Initial wait
+                retries = 5
+                for i in range(retries):
+                    if os.path.exists(temp_video_path) and os.path.getsize(temp_video_path) > 0:
+                        break
+                    time.sleep(0.5)
+                else:
+                    st.error("❌ File verification failed. The temporary file is not ready.")
+                    return
+
                 # Run inference
                 success, output_dir = analyzer.run_inference(temp_video_path)
                 

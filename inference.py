@@ -114,6 +114,7 @@ class VideoInferenceProcessor:
             return video_output_dir
         except subprocess.CalledProcessError as e:
             print(f"Error extracting frames from {video_path}: {e}")
+            print(f"FFmpeg stderr: {e.stderr}")
             return None
     
     def get_keypts(self, image, face):
